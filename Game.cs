@@ -3,11 +3,11 @@ using System;
 
 public class Game : Node2D
 {
-    private Maze _maze;
+    private MazeNode _maze;
 
     public override void _Ready()
     {
-        _maze = GetNode<Maze>("maze");
+        _maze = GetNode<MazeNode>("maze");
     }
 
     public override void _Input(InputEvent @event)
