@@ -1,6 +1,5 @@
 using Godot;
 using System;
-using System.Collections.Generic;
 
 public class MazeNode : Node2D
 {
@@ -10,8 +9,7 @@ public class MazeNode : Node2D
     private bool _debugMode = false;
     private Vector2 _cameraOriginalZoom;
 
-    private Random _rng = new Random();
-    private Stack<Cell> _stack = new Stack<Cell>();
+    private IMazeGenerator _mazeGen = new RandomDfsMazeGen();
 
     private Camera2D _camera;
     private Player _player;
@@ -115,20 +113,13 @@ public class MazeNode : Node2D
     public void RebuildMaze()
     {
         GD.Print("Building maze with ", Rows, " rows and ", Cols, " columns.");
-        _maze = new Maze(Rows, Cols);
-
-        var startCell = _maze[0, 0];
-        startCell.Visited = true;
-        _stack.Push(startCell);
 
         if (SlowGenMode) {
             _cellHighlight.Visible = true;
             _slowGenTimer.Start();
+            _mazeGen.StartStepwiseGeneration(Rows, Cols);
         } else {
-            while (_stack.Count > 0) {
-                MazeStep(false);
-            }
-
+            _maze = _mazeGen.Generate(Rows, Cols);
             GenerateMapFromMaze();
         }
 
@@ -142,29 +133,17 @@ public class MazeNode : Node2D
 
     private void MazeStep(bool rebuildMap = true)
     {
-        if (_stack.Count == 0) {
+        (bool finished, Maze maze) = _mazeGen.SingleStep();
+        _maze = maze;
+        if (finished) {
             _slowGenTimer.Stop();
             return;
         }
-
-        var cell = _stack.Pop();
-        if (cell == null)
-            return;
         
-        
+        var cell = _mazeGen.CurrentCell;
         _cellHighlight.RectPosition = new Vector2(cell.Col * _mazeMap.CellSize.x, cell.Row * _mazeMap.CellSize.y);
         _cellHighlight.RectSize = _mazeMap.CellSize;
         
-        cell.Visited = true;
-        var unvisitedNeighbors = _maze.GetUnvisitedNeighbors(cell);
-        if (unvisitedNeighbors.Count > 0) {
-            _stack.Push(cell);
-            var next = unvisitedNeighbors[_rng.Next(unvisitedNeighbors.Count)];
-            cell.Connect(next);
-            next.Visited = true;
-            _stack.Push(next);
-        }
-
         if (rebuildMap)
             GenerateMapFromMaze();
     }
