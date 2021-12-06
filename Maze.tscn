@@ -28,7 +28,7 @@ format = 1
 [node name="slow_gen_timer" type="Timer" parent="."]
 wait_time = 0.05
 
-[node name="cur_cell_indicator" type="ColorRect" parent="."]
+[node name="cell_highlight" type="ColorRect" parent="."]
 visible = false
 margin_right = 32.0
 margin_bottom = 32.0
@@ -40,4 +40,4 @@ __meta__ = {
 [node name="player" parent="." instance=ExtResource( 3 )]
 position = Vector2( 17, 16 )
 
-[connection signal="timeout" from="slow_gen_timer" to="." method="_on_slow_gen_timer_timeout"]
+[connection signal="timeout" from="slow_gen_timer" to="." method="_onSlowGenTimerTimeout"]

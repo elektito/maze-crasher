@@ -75,11 +75,16 @@ public class Maze : Node2D
     private bool _debugMode;
     private Vector2 _cameraOriginalZoom;
 
+    private Random _rng = new Random();
+    private Stack<Cell> _stack = new Stack<Cell>();
+
     private Camera2D _camera;
     private Player _player;
     private CanvasModulate _canvasModulate;
     private TileMap _mazeMap;
     private ColorRect _bg;
+    private Timer _slowGenTimer;
+    private ColorRect _cellHighlight;
 
     public override void _Ready()
     {
@@ -88,9 +93,13 @@ public class Maze : Node2D
         _canvasModulate = GetNode<CanvasModulate>("canvas_modulate");
         _mazeMap = GetNode<TileMap>("maze_map");
         _bg = GetNode<ColorRect>("bg");
+        _slowGenTimer = GetNode<Timer>("slow_gen_timer");
+        _cellHighlight = GetNode<ColorRect>("cell_highlight");
 
         RebuildMaze();
     }
+
+    [Export] public bool SlowGenMode { get; set; }
 
     public override void _Input(InputEvent inputEvent)
     {
@@ -140,7 +149,7 @@ public class Maze : Node2D
         }
     }
 
-    public bool DebugMode
+    [Export] public bool DebugMode
     {
         get { return _debugMode; }
         set {
@@ -169,26 +178,19 @@ public class Maze : Node2D
             }
         }
 
-        var rng = new Random();
-        var stack = new Stack<Cell>();
         var startCell = GetCellAt(0, 0);
         startCell.Visited = true;
-        stack.Push(startCell);
+        _stack.Push(startCell);
 
-        while (stack.Count > 0) {
-            var cell = stack.Pop();
-            if (cell == null)
-                break;
-            
-            cell.Visited = true;
-            var unvisitedNeighbors = GetUnvisitedNeighbors(cell);
-            if (unvisitedNeighbors.Count > 0) {
-                stack.Push(cell);
-                var next = unvisitedNeighbors[rng.Next(unvisitedNeighbors.Count)];
-                cell.Connect(next);
-                next.Visited = true;
-                stack.Push(next);
+        if (SlowGenMode) {
+            _cellHighlight.Visible = true;
+            _slowGenTimer.Start();
+        } else {
+            while (_stack.Count > 0) {
+                MazeStep(false);
             }
+
+            GenerateMapFromMaze();
         }
 
         if (IsInsideTree()) {
@@ -197,6 +199,35 @@ public class Maze : Node2D
             _camera.LimitBottom = Rows * (int) _mazeMap.CellSize.y;
             _bg.RectSize = _mazeMap.CellSize * new Vector2(Cols, Rows);
         }
+    }
+
+    private void MazeStep(bool rebuildMap = true)
+    {
+        if (_stack.Count == 0) {
+            _slowGenTimer.Stop();
+            return;
+        }
+
+        var cell = _stack.Pop();
+        if (cell == null)
+            return;
+        
+        
+        _cellHighlight.RectPosition = new Vector2(cell.Col * _mazeMap.CellSize.x, cell.Row * _mazeMap.CellSize.y);
+        _cellHighlight.RectSize = _mazeMap.CellSize;
+        
+        cell.Visited = true;
+        var unvisitedNeighbors = GetUnvisitedNeighbors(cell);
+        if (unvisitedNeighbors.Count > 0) {
+            _stack.Push(cell);
+            var next = unvisitedNeighbors[_rng.Next(unvisitedNeighbors.Count)];
+            cell.Connect(next);
+            next.Visited = true;
+            _stack.Push(next);
+        }
+
+        if (rebuildMap)
+            GenerateMapFromMaze();
     }
 
     public void GenerateMapFromMaze()
@@ -240,5 +271,10 @@ public class Maze : Node2D
             neighbors.Add(neighbor);
 
         return neighbors;
+    }
+
+    void _onSlowGenTimerTimeout()
+    {
+        MazeStep();
     }
 }
