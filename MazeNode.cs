@@ -136,6 +136,7 @@ public class MazeNode : Node2D
         (bool finished, Maze maze) = _mazeGen.SingleStep();
         _maze = maze;
         if (finished) {
+            GenerateMapFromMaze();
             _slowGenTimer.Stop();
             return;
         }
