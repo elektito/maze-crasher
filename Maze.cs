@@ -1,6 +1,14 @@
 using System;
 using System.Collections.Generic;
 
+public enum Direction {
+    None,
+    Up,
+    Down,
+    Left,
+    Right
+}
+
 public class Cell
 {
     public int Row;
@@ -64,6 +72,20 @@ public class Cell
             Console.WriteLine($"Cells {this} and {other} are not neighbors. Can't connect.");
         }
     }
+
+    public Direction GetDirectionOf(Cell other) {
+        if (other.Row - Row == 1) {
+            return Direction.Down;
+        } else if (other.Row - Row == -1) {
+            return Direction.Up;
+        } else if (other.Col - Col == 1) {
+            return Direction.Right;
+        } else if (other.Col - Col == -1) {
+            return Direction.Left;
+        }
+
+        return Direction.None;
+    }
 }
 
 class Maze
@@ -88,6 +110,20 @@ class Maze
     public int Cols
     {
         get => _cells.GetLength(1);
+    }
+
+    public int VisitedCount
+    {
+        get {
+            int count = 0;
+            for (int row = 0; row < Rows; ++row) {
+                for (int col = 0; col < Cols; ++col) {
+                    if (this[row, col].Visited)
+                        ++count;
+                }
+            }
+            return count;
+        }
     }
 
     public Cell this[int row, int col]
@@ -122,5 +158,57 @@ class Maze
             neighbors.Add(neighbor);
 
         return neighbors;
+    }
+
+    public List<Cell> GetNeighbors(Cell cell)
+    {
+        List<Cell> neighbors = new List<Cell>();
+        Cell neighbor;
+
+        neighbor = this[cell.Row - 1, cell.Col];
+        if (neighbor != null)
+            neighbors.Add(neighbor);
+        
+        neighbor = this[cell.Row + 1, cell.Col];
+        if (neighbor != null)
+            neighbors.Add(neighbor);
+        
+        neighbor = this[cell.Row, cell.Col - 1];
+        if (neighbor != null)
+            neighbors.Add(neighbor);
+        
+        neighbor = this[cell.Row, cell.Col + 1];
+        if (neighbor != null)
+            neighbors.Add(neighbor);
+        
+
+        return neighbors;
+    }
+
+    public Cell GetNeighbor(Cell cell, Direction dir)
+    {
+        switch (dir) {
+        case Direction.Left:
+            if (cell.Col <= 0)
+                return null;
+            return this[cell.Row, cell.Col - 1];
+        
+        case Direction.Right:
+            if (cell.Col >= Cols)
+                return null;
+            return this[cell.Row, cell.Col + 1];
+
+        case Direction.Up:
+            if (cell.Row <= 0)
+                return null;
+            return this[cell.Row - 1, cell.Col];
+
+        case Direction.Down:
+            if (cell.Row >= Rows)
+                return null;
+            return this[cell.Row + 1, cell.Col];
+        }
+
+        return null;
     }
 }
