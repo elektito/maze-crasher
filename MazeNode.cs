@@ -61,8 +61,10 @@ public class MazeNode : Node2D
             _camera.Zoom += zoomStep;
         }
 
-        if (Input.IsActionJustPressed("line") && !SlowGenMode) {
-            GetNode<Line2D>("line").Visible = !GetNode<Line2D>("line").Visible;
+        if (Input.IsActionJustPressed("line")) {
+            var line = GetNode<Line2D>("line");
+            if (line != null)
+                line.Visible = !line.Visible;
         }
     }
     
@@ -129,36 +131,7 @@ public class MazeNode : Node2D
         } else {
             _maze = _mazeGen.Generate(Rows, Cols);
             GenerateMapFromMaze();
-
-            _dijkstra = new Dijkstra(_maze);
-            (_dijkstraPrev, _dijkstraDistance) = _dijkstra.perform(_maze[0, 0]);
-
-            var maxKeyValue = _dijkstraDistance.OrderByDescending(pair => pair.Value).First();
-            var maxCell = maxKeyValue.Key;
-            var maxDistance = maxKeyValue.Value;
-
-            var cur = maxCell;
-            var path = new List<Cell>();
-            while (cur != null && _dijkstraPrev.ContainsKey(cur)) {
-                path.Add(cur);
-                cur = _dijkstraPrev[cur];
-            }
-            path.Reverse();
-
-            var existingLine = GetNode<Line2D>("line");
-            if (existingLine != null)
-                existingLine.QueueFree();
-            var line = new Line2D();
-            AddChild(line);
-            line.Name = "line";
-            line.Modulate = Colors.Red;
-            line.Width = 2;
-            var cellSize = _mazeMap.CellSize.x;
-            foreach (Cell cell in path) {
-                var cellPos = new Vector2(cell.Col * _mazeMap.CellSize.x + _mazeMap.CellSize.x / 2,
-                                          cell.Row * _mazeMap.CellSize.y + _mazeMap.CellSize.y / 2);
-                line.AddPoint(cellPos);
-            }
+            CreateLine();
         }
 
         if (IsInsideTree()) {
@@ -175,6 +148,7 @@ public class MazeNode : Node2D
         _maze = maze;
         if (finished) {
             GenerateMapFromMaze();
+            CreateLine();
             _slowGenTimer.Stop();
             return;
         }
@@ -196,6 +170,39 @@ public class MazeNode : Node2D
                 var tile = _mazeMap.TileSet.FindTileByName(cell.TileName);
                 _mazeMap.SetCell(col, row, tile);
             }
+        }
+    }
+
+    public void CreateLine()
+    {
+        _dijkstra = new Dijkstra(_maze);
+        (_dijkstraPrev, _dijkstraDistance) = _dijkstra.perform(_maze[0, 0]);
+
+        var maxKeyValue = _dijkstraDistance.OrderByDescending(pair => pair.Value).First();
+        var maxCell = maxKeyValue.Key;
+        var maxDistance = maxKeyValue.Value;
+
+        var cur = maxCell;
+        var path = new List<Cell>();
+        while (cur != null && _dijkstraPrev.ContainsKey(cur)) {
+            path.Add(cur);
+            cur = _dijkstraPrev[cur];
+        }
+        path.Reverse();
+
+        var existingLine = GetNode<Line2D>("line");
+        if (existingLine != null)
+            existingLine.QueueFree();
+        var line = new Line2D();
+        AddChild(line);
+        line.Name = "line";
+        line.Modulate = Colors.Red;
+        line.Width = 2;
+        var cellSize = _mazeMap.CellSize.x;
+        foreach (Cell cell in path) {
+            var cellPos = new Vector2(cell.Col * _mazeMap.CellSize.x + _mazeMap.CellSize.x / 2,
+                                        cell.Row * _mazeMap.CellSize.y + _mazeMap.CellSize.y / 2);
+            line.AddPoint(cellPos);
         }
     }
 
