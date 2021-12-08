@@ -66,6 +66,15 @@ public class MazeNode : Node2D
             if (line != null)
                 line.Visible = !line.Visible;
         }
+
+        if (Input.IsActionJustPressed("rebuild") && !_mazeGen.Generating) {
+            var line = GetNode<Line2D>("line");
+            if (line != null) {
+                line.Visible = false;
+                line.QueueFree();
+            }
+            RebuildMaze();
+        }
     }
     
     [Export] public int Rows

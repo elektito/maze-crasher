@@ -9,6 +9,8 @@ class RandomDfsMazeGen : IMazeGenerator
 
     public Cell CurrentCell { get; set; }
 
+    public bool Generating { get; set; } = false;
+
     public Maze Generate(int rows, int cols)
     {
         StartStepwiseGeneration(rows, cols);
@@ -17,11 +19,14 @@ class RandomDfsMazeGen : IMazeGenerator
             SingleStep();
         }
 
+        Generating = false;
+
         return _maze;
     }
 
     public void StartStepwiseGeneration(int rows, int cols)
     {
+        Generating = true;
         _maze = new Maze(rows, cols);
 
         CurrentCell = _maze[0, 0];
@@ -31,6 +36,7 @@ class RandomDfsMazeGen : IMazeGenerator
     public (bool finished, Maze maze) SingleStep()
     {
         if (_stack.Count == 0) {
+            Generating = false;
             return (true, _maze);
         }
 

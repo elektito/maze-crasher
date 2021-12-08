@@ -11,6 +11,8 @@ class WilsonMazeGen : IMazeGenerator
     
     public Cell CurrentCell { get; set; }
 
+    public bool Generating { get; set; } = false;
+
     public Maze Generate(int rows, int cols)
     {
         StartStepwiseGeneration(rows, cols);
@@ -19,11 +21,14 @@ class WilsonMazeGen : IMazeGenerator
             SingleStep();
         }
 
+        Generating = false;
+
         return _maze;
     }
 
     public void StartStepwiseGeneration(int rows, int cols)
     {
+        Generating = true;
         _maze = new Maze(rows, cols);
 
         // Mark one cell as visited; this will be the first target of random walk.
@@ -40,6 +45,7 @@ class WilsonMazeGen : IMazeGenerator
     public (bool finished, Maze maze) SingleStep()
     {
         if (_maze.VisitedCount == _maze.Rows * _maze.Cols) {
+            Generating = false;
             return (true, _maze);
         }
 
@@ -59,6 +65,7 @@ class WilsonMazeGen : IMazeGenerator
 
             if (CurrentCell == null) {
                 // This is the last cell.
+                Generating = false;
                 return (true, _maze);
             }
             

@@ -5,4 +5,5 @@ interface IMazeGenerator
     (bool finished, Maze maze) SingleStep();
 
     Cell CurrentCell { get; set; }
+    bool Generating { get; set; }
 }
