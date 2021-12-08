@@ -1,5 +1,7 @@
 using Godot;
 using System;
+using System.Linq;
+using System.Collections.Generic;
 
 public class MazeNode : Node2D
 {
@@ -8,8 +10,10 @@ public class MazeNode : Node2D
     private Maze _maze;
     private bool _debugMode = false;
     private Vector2 _cameraOriginalZoom;
-
-    private IMazeGenerator _mazeGen = new RandomDfsMazeGen();
+    private Dijkstra _dijkstra;
+    private Dictionary<Cell, Cell> _dijkstraPrev;
+    private Dictionary<Cell, double> _dijkstraDistance;
+    private IMazeGenerator _mazeGen = new WilsonMazeGen();
 
     private Camera2D _camera;
     private Player _player;
@@ -55,6 +59,10 @@ public class MazeNode : Node2D
             inputEvent.IsPressed())
         {
             _camera.Zoom += zoomStep;
+        }
+
+        if (Input.IsActionJustPressed("line") && !SlowGenMode) {
+            GetNode<Line2D>("line").Visible = !GetNode<Line2D>("line").Visible;
         }
     }
     
@@ -121,6 +129,36 @@ public class MazeNode : Node2D
         } else {
             _maze = _mazeGen.Generate(Rows, Cols);
             GenerateMapFromMaze();
+
+            _dijkstra = new Dijkstra(_maze);
+            (_dijkstraPrev, _dijkstraDistance) = _dijkstra.perform(_maze[0, 0]);
+
+            var maxKeyValue = _dijkstraDistance.OrderByDescending(pair => pair.Value).First();
+            var maxCell = maxKeyValue.Key;
+            var maxDistance = maxKeyValue.Value;
+
+            var cur = maxCell;
+            var path = new List<Cell>();
+            while (cur != null && _dijkstraPrev.ContainsKey(cur)) {
+                path.Add(cur);
+                cur = _dijkstraPrev[cur];
+            }
+            path.Reverse();
+
+            var existingLine = GetNode<Line2D>("line");
+            if (existingLine != null)
+                existingLine.QueueFree();
+            var line = new Line2D();
+            AddChild(line);
+            line.Name = "line";
+            line.Modulate = Colors.Red;
+            line.Width = 2;
+            var cellSize = _mazeMap.CellSize.x;
+            foreach (Cell cell in path) {
+                var cellPos = new Vector2(cell.Col * _mazeMap.CellSize.x + _mazeMap.CellSize.x / 2,
+                                          cell.Row * _mazeMap.CellSize.y + _mazeMap.CellSize.y / 2);
+                line.AddPoint(cellPos);
+            }
         }
 
         if (IsInsideTree()) {

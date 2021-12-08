@@ -86,6 +86,21 @@ public class Cell
 
         return Direction.None;
     }
+
+    public bool IsConnected(Direction dir) {
+        switch (dir) {
+        case Direction.Up:
+            return _topConnected;
+        case Direction.Down:
+            return _bottomConnected;
+        case Direction.Left:
+            return _leftConnected;
+        case Direction.Right:
+            return _rightConnected;
+        }
+
+        return false;
+    }
 }
 
 class Maze
@@ -182,6 +197,20 @@ class Maze
             neighbors.Add(neighbor);
         
 
+        return neighbors;
+    }
+
+    public List<Cell> GetConnectedNeighbors(Cell cell)
+    {
+        var neighbors = new List<Cell>();
+        if (cell.IsConnected(Direction.Up))
+            neighbors.Add(this[cell.Row - 1, cell.Col]);
+        if (cell.IsConnected(Direction.Down))
+            neighbors.Add(this[cell.Row + 1, cell.Col]);
+        if (cell.IsConnected(Direction.Left))
+            neighbors.Add(this[cell.Row, cell.Col - 1]);
+        if (cell.IsConnected(Direction.Right))
+            neighbors.Add(this[cell.Row, cell.Col + 1]);
         return neighbors;
     }
 
