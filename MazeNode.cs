@@ -62,17 +62,13 @@ public class MazeNode : Node2D
         }
 
         if (Input.IsActionJustPressed("line")) {
-            var line = GetNode<Line2D>("line");
+            var lines = GetTree().GetNodesInGroup("line");
+            var line = lines.Count > 0 ? (Line2D) lines[0] : null;
             if (line != null)
                 line.Visible = !line.Visible;
         }
 
         if (Input.IsActionJustPressed("rebuild") && !_mazeGen.Generating) {
-            var line = GetNode<Line2D>("line");
-            if (line != null) {
-                line.Visible = false;
-                line.QueueFree();
-            }
             RebuildMaze();
         }
     }
@@ -199,12 +195,12 @@ public class MazeNode : Node2D
         }
         path.Reverse();
 
-        var existingLine = GetNode<Line2D>("line");
-        if (existingLine != null)
+        foreach (Line2D existingLine in GetTree().GetNodesInGroup("line")) {
             existingLine.QueueFree();
+        }
         var line = new Line2D();
+        line.AddToGroup("line");
         AddChild(line);
-        line.Name = "line";
         line.Modulate = Colors.Red;
         line.Width = 2;
         var cellSize = _mazeMap.CellSize.x;
