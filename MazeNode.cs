@@ -127,6 +127,7 @@ public class MazeNode : Node2D
     public void RebuildMaze()
     {
         GD.Print("Building maze with ", Rows, " rows and ", Cols, " columns.");
+        _player.TargetCell = null;
 
         if (SlowGenMode) {
             _cellHighlight.Visible = true;
@@ -206,6 +207,9 @@ public class MazeNode : Node2D
                                         cell.Row * _mazeMap.CellSize.y + _mazeMap.CellSize.y / 2);
             _line.AddPoint(cellPos);
         }
+
+        GD.Print("Target cell: ", maxCell);
+        _player.TargetCell = maxCell;
     }
 
     void _onSlowGenTimerTimeout()
