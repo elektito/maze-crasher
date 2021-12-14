@@ -22,6 +22,7 @@ public class MazeNode : Node2D
     private ColorRect _bg;
     private Timer _slowGenTimer;
     private ColorRect _cellHighlight;
+    private Line2D _line;
 
     public override void _Ready()
     {
@@ -62,10 +63,8 @@ public class MazeNode : Node2D
         }
 
         if (Input.IsActionJustPressed("line")) {
-            var lines = GetTree().GetNodesInGroup("line");
-            var line = lines.Count > 0 ? (Line2D) lines[0] : null;
-            if (line != null)
-                line.Visible = !line.Visible;
+            if (_line != null)
+                _line.Visible = !_line.Visible;
         }
 
         if (Input.IsActionJustPressed("rebuild") && !_mazeGen.Generating) {
@@ -195,19 +194,17 @@ public class MazeNode : Node2D
         }
         path.Reverse();
 
-        foreach (Line2D existingLine in GetTree().GetNodesInGroup("line")) {
-            existingLine.QueueFree();
-        }
-        var line = new Line2D();
-        line.AddToGroup("line");
-        AddChild(line);
-        line.Modulate = Colors.Red;
-        line.Width = 2;
+        if (_line != null)
+            _line.QueueFree();
+        _line = new Line2D();
+        AddChild(_line);
+        _line.Modulate = Colors.Red;
+        _line.Width = 2;
         var cellSize = _mazeMap.CellSize.x;
         foreach (Cell cell in path) {
             var cellPos = new Vector2(cell.Col * _mazeMap.CellSize.x + _mazeMap.CellSize.x / 2,
                                         cell.Row * _mazeMap.CellSize.y + _mazeMap.CellSize.y / 2);
-            line.AddPoint(cellPos);
+            _line.AddPoint(cellPos);
         }
     }
 
