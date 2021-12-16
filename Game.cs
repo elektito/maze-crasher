@@ -6,6 +6,7 @@ public class Game : Node2D
     private bool _debugMode = false;
     private Vector2 _cameraOriginalZoom;
     private Direction _wallWalkDirection = Direction.None;
+    private Vector2 _lastPlayerPos;
     private MazeNode _maze;
     private Player _player;
     private Camera2D _camera;
@@ -73,6 +74,11 @@ public class Game : Node2D
         }
 
         if (Input.IsActionJustPressed("wall_walk_step")) {
+            if (_lastPlayerPos != _player.Position) {
+                // Reset direction if the player has been manually moved since last "wall-walk-step".
+                _wallWalkDirection = Direction.None;
+            }
+
             var curCell = GetCurrentCell();
 
             if (_wallWalkDirection == Direction.None) {
@@ -97,6 +103,7 @@ public class Game : Node2D
 
                 if (newCell != null) {
                     _player.Position = GetCellPosition(newCell.Row, newCell.Col);
+                    _lastPlayerPos = _player.Position;
                 }
             }
         }
