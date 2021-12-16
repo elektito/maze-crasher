@@ -14,7 +14,7 @@ public class MazeNode : Node2D
     private Dictionary<Cell, Cell> _dijkstraPrev;
     private Dictionary<Cell, double> _dijkstraDistance;
     private IMazeGenerator _mazeGen = new WilsonMazeGen();
-    private Direction _wallWalkDirection = Direction.Down;
+    private Direction _wallWalkDirection = Direction.None;
 
     private Camera2D _camera;
     private Player _player;
@@ -217,6 +217,22 @@ public class MazeNode : Node2D
     {
         Cell curCell = GetCurrentCell();
         Cell newCell = null;
+
+        if (_wallWalkDirection == Direction.None) {
+            // Choose a direction to walk, so that there is a wall to the right of the player.
+            if (!curCell.IsConnected(Direction.Left)) {
+                _wallWalkDirection = Direction.Down;
+            } else if (!curCell.IsConnected(Direction.Right)) {
+                _wallWalkDirection = Direction.Up;
+            } else if (!curCell.IsConnected(Direction.Up)) {
+                _wallWalkDirection = Direction.Left;
+            } else if (!curCell.IsConnected(Direction.Down)) {
+                _wallWalkDirection = Direction.Right;
+            } else {
+                // Current cell has no walls, so we can't "wall walk".
+                return;
+            }
+        }
 
         while (newCell == null) {
             Direction rightSide = _wallWalkDirection switch {
