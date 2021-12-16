@@ -240,4 +240,46 @@ class Maze
 
         return null;
     }
+
+    public (Cell newCell, Direction newDirection) WallWalkStep(Cell curCell, Direction direction)
+    {
+        Cell newCell = null;
+
+        while (newCell == null) {
+            Direction rightSide = direction switch {
+                Direction.Down  => Direction.Left,
+                Direction.Left  => Direction.Up,
+                Direction.Up    => Direction.Right,
+                Direction.Right => Direction.Down,
+                _               => Direction.None,
+            };
+            Direction leftSide = direction switch {
+                Direction.Left  => Direction.Down,
+                Direction.Up    => Direction.Left,
+                Direction.Right => Direction.Up,
+                Direction.Down  => Direction.Right,
+                _               => Direction.None,
+            };
+
+            if (!curCell.IsConnected(rightSide)) {
+                // There's a wall to the right; attempt going forward.
+                var neighbor = GetNeighbor(curCell, direction);
+                if (curCell.IsConnected(direction)) {
+                    // The way forward is clear; go ahead.
+                    newCell = GetNeighbor(curCell, direction);
+                } else {
+                    // Can't go forward; turn left.
+                    direction = leftSide;
+                }
+            } else {
+                // No wall to the right; move to the right side direction.
+                direction = rightSide;
+                newCell = GetNeighbor(curCell, direction);
+            }
+        }
+
+        Console.WriteLine($"Moving from {curCell} to {newCell}.");
+        
+        return (newCell, direction);
+    }
 }

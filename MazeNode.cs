@@ -5,19 +5,19 @@ using System.Collections.Generic;
 
 public class MazeNode : Node2D
 {
+    [Signal] public delegate void Generated();
+
     private int _rows;
     private int _cols;
     private Maze _maze;
     private bool _debugMode = false;
-    private Vector2 _cameraOriginalZoom;
     private Dijkstra _dijkstra;
     private Dictionary<Cell, Cell> _dijkstraPrev;
     private Dictionary<Cell, double> _dijkstraDistance;
     private IMazeGenerator _mazeGen = new WilsonMazeGen();
     private Direction _wallWalkDirection = Direction.None;
+    private Cell _furthestCell;
 
-    private Camera2D _camera;
-    private Player _player;
     private CanvasModulate _canvasModulate;
     private TileMap _mazeMap;
     private ColorRect _bg;
@@ -27,8 +27,6 @@ public class MazeNode : Node2D
 
     public override void _Ready()
     {
-        _player = GetNode<Player>("player");
-        _camera = GetNode<Camera2D>("player/camera");
         _canvasModulate = GetNode<CanvasModulate>("canvas_modulate");
         _mazeMap = GetNode<TileMap>("maze_map");
         _bg = GetNode<ColorRect>("bg");
@@ -36,40 +34,15 @@ public class MazeNode : Node2D
         _cellHighlight = GetNode<ColorRect>("cell_highlight");
 
         _maze = new Maze(Rows, Cols);
-
-        RebuildMaze();
     }
 
     [Export] public bool SlowGenMode { get; set; } = false;
 
     public override void _Input(InputEvent inputEvent)
     {
-        var zoomStep = new Vector2(0.1f, 0.1f);
-        if (DebugMode &&
-            inputEvent is InputEventMouseButton &&
-            ((inputEvent as InputEventMouseButton).ButtonIndex == (int) ButtonList.WheelUp) &&
-            inputEvent.IsPressed())
-        {
-            if (_camera.Zoom > zoomStep) {
-                _camera.Zoom -= zoomStep;
-            }
-        }
-
-        if (DebugMode &&
-            inputEvent is InputEventMouseButton &&
-            ((inputEvent as InputEventMouseButton).ButtonIndex == (int) ButtonList.WheelDown) &&
-            inputEvent.IsPressed())
-        {
-            _camera.Zoom += zoomStep;
-        }
-
         if (Input.IsActionJustPressed("line")) {
             if (_line != null)
                 _line.Visible = !_line.Visible;
-        }
-
-        if (Input.IsActionJustPressed("rebuild") && !_mazeGen.Generating) {
-            RebuildMaze();
         }
     }
     
@@ -105,30 +78,42 @@ public class MazeNode : Node2D
 
     [Export] public bool DebugMode
     {
-        get { return _debugMode; }
+        get => _debugMode;
         set {
-            if (!OS.IsDebugBuild())
-                return;
-
             _debugMode = value;
-            if (!IsInsideTree())
-                return;
-
-            if (_debugMode) {
-                _cameraOriginalZoom = _camera.Zoom;
-            } else {
-                _camera.Zoom = _cameraOriginalZoom;
-            }
-
             _canvasModulate.Visible = !_debugMode;
-            _player.LightsEnabled = !_debugMode;
         }
+    }
+
+    [Export] public Vector2 CellSize
+    {
+        get {
+            if (_mazeMap == null)
+                return Vector2.Zero;
+            return _mazeMap.CellSize;
+        }
+        set {
+            if (_mazeMap == null)
+                return;
+            _mazeMap.CellSize = value;
+        }
+    }
+
+    public Cell FurthestCell
+    {
+        get => _furthestCell;
     }
 
     public void RebuildMaze()
     {
+        if (_mazeGen.Generating) {
+            Console.WriteLine($"Already generating a maze; Rebuild request ignored.");
+            return;
+        }
+
         GD.Print("Building maze with ", Rows, " rows and ", Cols, " columns.");
-        _player.TargetCell = null;
+
+        _bg.RectSize = _mazeMap.CellSize * new Vector2(Cols, Rows);
 
         if (SlowGenMode) {
             _cellHighlight.Visible = true;
@@ -142,9 +127,7 @@ public class MazeNode : Node2D
 
         if (IsInsideTree()) {
             GenerateMapFromMaze();
-            _camera.LimitRight = Cols * (int) _mazeMap.CellSize.x;
-            _camera.LimitBottom = Rows * (int) _mazeMap.CellSize.y;
-            _bg.RectSize = _mazeMap.CellSize * new Vector2(Cols, Rows);
+            EmitSignal(nameof(Generated));
         }
     }
 
@@ -156,6 +139,7 @@ public class MazeNode : Node2D
             GenerateMapFromMaze();
             CreateLine();
             _slowGenTimer.Stop();
+            EmitSignal(nameof(Generated));
             return;
         }
         
@@ -210,78 +194,21 @@ public class MazeNode : Node2D
         }
 
         GD.Print("Target cell: ", maxCell);
-        _player.TargetCell = maxCell;
-    }
-
-    public void WallWalkStep()
-    {
-        Cell curCell = GetCurrentCell();
-        Cell newCell = null;
-
-        if (_wallWalkDirection == Direction.None) {
-            // Choose a direction to walk, so that there is a wall to the right of the player.
-            if (!curCell.IsConnected(Direction.Left)) {
-                _wallWalkDirection = Direction.Down;
-            } else if (!curCell.IsConnected(Direction.Right)) {
-                _wallWalkDirection = Direction.Up;
-            } else if (!curCell.IsConnected(Direction.Up)) {
-                _wallWalkDirection = Direction.Left;
-            } else if (!curCell.IsConnected(Direction.Down)) {
-                _wallWalkDirection = Direction.Right;
-            } else {
-                // Current cell has no walls, so we can't "wall walk".
-                return;
-            }
-        }
-
-        while (newCell == null) {
-            Direction rightSide = _wallWalkDirection switch {
-                Direction.Down  => Direction.Left,
-                Direction.Left  => Direction.Up,
-                Direction.Up    => Direction.Right,
-                Direction.Right => Direction.Down,
-                _               => Direction.None,
-            };
-            Direction leftSide = _wallWalkDirection switch {
-                Direction.Left  => Direction.Down,
-                Direction.Up    => Direction.Left,
-                Direction.Right => Direction.Up,
-                Direction.Down  => Direction.Right,
-                _               => Direction.None,
-            };
-
-            if (!curCell.IsConnected(rightSide)) {
-                // There's a wall to the right; attempt going forward.
-                var neighbor = _maze.GetNeighbor(curCell, _wallWalkDirection);
-                if (curCell.IsConnected(_wallWalkDirection)) {
-                    // The way forward is clear; go ahead.
-                    newCell = _maze.GetNeighbor(curCell, _wallWalkDirection);
-                } else {
-                    // Can't go forward; turn left.
-                    _wallWalkDirection = leftSide;
-                }
-            } else {
-                // No wall to the right; move to the right side direction.
-                _wallWalkDirection = rightSide;
-                newCell = _maze.GetNeighbor(curCell, _wallWalkDirection);
-            }
-        }
-
-        Console.WriteLine($"Moving from {curCell} to {newCell}.");
-        _player.Position = new Vector2(newCell.Col * _mazeMap.CellSize.x + _mazeMap.CellSize.x / 2,
-                                       newCell.Row * _mazeMap.CellSize.y + _mazeMap.CellSize.y / 2);
-    }
-
-    public Cell GetCurrentCell()
-    {
-        Vector2 pos = _player.Position;
-        int row = Mathf.FloorToInt(pos.y / _mazeMap.CellSize.y);
-        int col = Mathf.FloorToInt(pos.x / _mazeMap.CellSize.x);
-        return _maze[row, col];
+        _furthestCell = maxCell;
     }
 
     void _onSlowGenTimerTimeout()
     {
         MazeStep();
+    }
+
+    public (Cell newCell, Direction newDirection) WallWalkStep(Cell curCell, Direction direction)
+    {
+        return _maze.WallWalkStep(curCell, direction);
+    }
+
+    public Cell GetCell(int row, int col)
+    {
+        return _maze[row, col];
     }
 }
