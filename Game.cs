@@ -35,10 +35,11 @@ public class Game : Node2D
     public override void _Ready()
     {
         _maze = GetNode<MazeNode>("maze");
-        _player = GetNode<Player>("player");
-        _camera = GetNode<Camera2D>("player/camera");
+        _player = GetNode<Player>("maze/player");
+        _camera = GetNode<Camera2D>("maze/player/camera");
 
         _maze.RebuildMaze();
+        _player.Position = GetCellPosition(0, 0);
     }
 
     public override void _Input(InputEvent inputEvent)
@@ -95,8 +96,7 @@ public class Game : Node2D
                 _wallWalkDirection = newDir;
 
                 if (newCell != null) {
-                    _player.Position = new Vector2(newCell.Col * _maze.CellSize.x + _maze.CellSize.x / 2,
-                                                   newCell.Row * _maze.CellSize.y + _maze.CellSize.y / 2);
+                    _player.Position = GetCellPosition(newCell.Row, newCell.Col);
                 }
             }
         }
@@ -108,6 +108,12 @@ public class Game : Node2D
         int row = Mathf.FloorToInt(pos.y / _maze.CellSize.y);
         int col = Mathf.FloorToInt(pos.x / _maze.CellSize.x);
         return _maze.GetCell(row, col);
+    }
+
+    public Vector2 GetCellPosition(int row, int col)
+    {
+        return new Vector2(col * _maze.CellSize.x + _maze.CellSize.x / 2,
+                           row * _maze.CellSize.y + _maze.CellSize.y / 2);
     }
 
     public void _OnMazeGenerated()

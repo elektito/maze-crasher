@@ -11,7 +11,7 @@ script = ExtResource( 1 )
 Rows = 32
 Cols = 32
 
-[node name="player" parent="." instance=ExtResource( 3 )]
+[node name="player" parent="maze" instance=ExtResource( 3 )]
 position = Vector2( 17, 16 )
 
 [connection signal="Generated" from="maze" to="." method="_OnMazeGenerated"]
