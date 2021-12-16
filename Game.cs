@@ -20,5 +20,9 @@ public class Game : Node2D
         if (Input.IsActionJustPressed("rebuild")) {
             _maze.RebuildMaze();
         }
+
+        if (Input.IsActionJustPressed("wall_walk_step")) {
+            _maze.WallWalkStep();
+        }
     }
 }

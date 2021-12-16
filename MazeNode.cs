@@ -14,6 +14,7 @@ public class MazeNode : Node2D
     private Dictionary<Cell, Cell> _dijkstraPrev;
     private Dictionary<Cell, double> _dijkstraDistance;
     private IMazeGenerator _mazeGen = new WilsonMazeGen();
+    private Direction _wallWalkDirection = Direction.Down;
 
     private Camera2D _camera;
     private Player _player;
@@ -210,6 +211,57 @@ public class MazeNode : Node2D
 
         GD.Print("Target cell: ", maxCell);
         _player.TargetCell = maxCell;
+    }
+
+    public void WallWalkStep()
+    {
+        Cell curCell = GetCurrentCell();
+        Cell newCell = null;
+
+        while (newCell == null) {
+            Direction rightSide = _wallWalkDirection switch {
+                Direction.Down  => Direction.Left,
+                Direction.Left  => Direction.Up,
+                Direction.Up    => Direction.Right,
+                Direction.Right => Direction.Down,
+                _               => Direction.None,
+            };
+            Direction leftSide = _wallWalkDirection switch {
+                Direction.Left  => Direction.Down,
+                Direction.Up    => Direction.Left,
+                Direction.Right => Direction.Up,
+                Direction.Down  => Direction.Right,
+                _               => Direction.None,
+            };
+
+            if (!curCell.IsConnected(rightSide)) {
+                // There's a wall to the right; attempt going forward.
+                var neighbor = _maze.GetNeighbor(curCell, _wallWalkDirection);
+                if (curCell.IsConnected(_wallWalkDirection)) {
+                    // The way forward is clear; go ahead.
+                    newCell = _maze.GetNeighbor(curCell, _wallWalkDirection);
+                } else {
+                    // Can't go forward; turn left.
+                    _wallWalkDirection = leftSide;
+                }
+            } else {
+                // No wall to the right; move to the right side direction.
+                _wallWalkDirection = rightSide;
+                newCell = _maze.GetNeighbor(curCell, _wallWalkDirection);
+            }
+        }
+
+        Console.WriteLine($"Moving from {curCell} to {newCell}.");
+        _player.Position = new Vector2(newCell.Col * _mazeMap.CellSize.x + _mazeMap.CellSize.x / 2,
+                                       newCell.Row * _mazeMap.CellSize.y + _mazeMap.CellSize.y / 2);
+    }
+
+    public Cell GetCurrentCell()
+    {
+        Vector2 pos = _player.Position;
+        int row = Mathf.FloorToInt(pos.y / _mazeMap.CellSize.y);
+        int col = Mathf.FloorToInt(pos.x / _mazeMap.CellSize.x);
+        return _maze[row, col];
     }
 
     void _onSlowGenTimerTimeout()
